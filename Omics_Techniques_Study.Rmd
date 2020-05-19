@@ -1,0 +1,58 @@
+---
+title: "Amniotic fluid RNA gene expression profiling provides insights into the phenotype of Turner syndrome"
+author: "Helena Martin Hernández"
+date: "19/5/2020"
+output: html_document
+---
+GitHub Repository Link: <https://github.com/hemahecodes/Omics-Techniques-2020.git>
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Turner syndrome is a chromosomal condition that affects the development on females. Some common features of Turner syndrome are: 
+
+- Short stature
+- Loss of ovarian function
+- Webbed neck
+- Lymphedema
+- Coarctation of the aorta
+
+On this study, the fetal amniotic fluid is a complex biological material used to understand the Turner syndrome pathogenesis. Cell-free RNA from amniotic fluid of five mid-trimester Turner syndrome fetuses and five euploid female fetuses was extracted, amplified, and hybridized onto affymetrix arrays. Then, significantly differentially regulated genes were identified. [^1]
+
+The data consists of several genes with their expression frequency on the different fetus. 
+
+First, we have to download the data. We can do it using the getGEO function.
+
+```{r plot}
+library(GEOquery)
+gse <- getGEO("GSE58435")
+data <- exprs(gse[[1]])
+```
+
+Now, we can take a first look to the data. With the following command we can extract a summary of our data.
+
+```{r data2}
+gse[[1]]
+
+```
+To obtain numerical summaries as the number of rows and columns in our data we can use the following command:
+
+```{r data}
+dim(exprs(gse[[1]]))
+```
+We observe that the have 10 columns, each of these columns represents one sample of the study, ans 54675 rows, which represent the different genes analyzed. 
+
+Now, lets observe the data by doing some plots.
+To understand better how the data is represented we can perform a plot for a single gene.
+
+```{r plot2}
+plot(data[1,], ylab= 'Gene Frequency', xlab='Sample Number')
+```
+
+
+
+On this plot we can observe that for each gene, each sample has a value corresponding to the frequency of this gene. Note that 5 samples correspond to fetuses with Turner syndorme, and the other 5 samples correspond to fetuses without Turner syndorm. Therefore, in this study we have 2 groups. 
+Performing an analysis of all the genes and comparing the results between the two groups can help us to obtain more information about the Turner syndrome and what genes are involved on the phenotypic alterations.
+
+[^1]: Amniotic Fluid RNA Gene Expression Profiling Provides Insights Into the Phenotype of Turner Syndrome: Lauren J Massingham 1, Kirby L Johnson, Thomas M Scholl, Donna K Slonim, Heather C Wick, Diana W Bianchi
