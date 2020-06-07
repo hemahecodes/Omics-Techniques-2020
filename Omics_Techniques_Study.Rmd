@@ -9,50 +9,131 @@ GitHub Repository Link: <https://github.com/hemahecodes/Omics-Techniques-2020.gi
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+### Description of the study
 
 Turner syndrome is a chromosomal condition that affects the development on females. Some common features of Turner syndrome are: 
 
-- Short stature
-- Loss of ovarian function
-- Webbed neck
-- Lymphedema
-- Coarctation of the aorta
+* Short stature
+* Loss of ovarian function
+* Webbed neck
+* Lymphedema
+* Coarctation of the aorta
 
 On this study, the fetal amniotic fluid is a complex biological material used to understand the Turner syndrome pathogenesis. Cell-free RNA from amniotic fluid of five mid-trimester Turner syndrome fetuses and five euploid female fetuses was extracted, amplified, and hybridized onto affymetrix arrays. Then, significantly differentially regulated genes were identified. [^1]
 
+### Main objective of the study
+
+The study aims to understand which genes and organ systems play a role in Turner syndrome pathophysiology by analyzing extracellular RNA in amniotic fluid.
 The data consists of several genes with their expression frequency on the different fetus. 
+
+***Response variable**: Expression of genes
+***Groups**: 2
+***Sample size**: 10, 5 fetuses with Turner syndrome and 5 fetuses without Turner syndrome.
 
 First, we have to download the data. We can do it using the getGEO function.
 
 ```{r plot}
 library(GEOquery)
-gse <- getGEO("GSE58435")
-data <- exprs(gse[[1]])
+library(limma)
+library(Biobase)
+gset <- getGEO("GSE58435", GSEMatrix =TRUE, AnnotGPL=TRUE)
+data <- exprs(gset[[1]])
 ```
+
 
 Now, we can take a first look to the data. With the following command we can extract a summary of our data.
 
 ```{r data2}
-gse[[1]]
+gset[[1]]
 
 ```
 To obtain numerical summaries as the number of rows and columns in our data we can use the following command:
 
 ```{r data}
-dim(exprs(gse[[1]]))
+dim(exprs(gset[[1]]))
 ```
 We observe that the have 10 columns, each of these columns represents one sample of the study, ans 54675 rows, which represent the different genes analyzed. 
 
 Now, lets observe the data by doing some plots.
 To understand better how the data is represented we can perform a plot for a single gene.
-
-```{r plot2}
+```{r plot3}
 plot(data[1,], ylab= 'Gene Frequency', xlab='Sample Number')
+```
+On this plot we can observe that for each gene, each sample has a value corresponding to the frequency of this gene. Note that 5 samples correspond to fetuses with Turner syndorme, and the other 5 samples correspond to fetuses without Turner syndorm. Therefore, in this study we have 2 groups. 
+Performing an analysis of all the genes and comparing the results between the two groups can help us to obtain more information about the Turner syndrome and what genes are involved on the phenotypic alterations.
+
+### Design Matrix
+```{r matrix}
+
+design_matrix<- matrix(c(1,1,1,1,1,2,2,2,2,2,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1), nrow = 10,ncol = 3, dimnames =list(c("Sample 1","Sample 2","Sample 3","Sample 4","Sample 5","Sample 6","Sample 7","Sample 8","Sample 9","Sample 10"), c("Group", "| Turner Group","| Control Group")))
+
+design_matrix
+
+```
+
+### Contrast Matrix
+
+```{r contrast}
+
+
+if (length(gset) > 1) idx <- grep("GPL570", attr(gset, "names")) else idx <- 1
+gset <- gset[[idx]]
+
+# Define the column names properly: 
+fvarLabels(gset) <- make.names(fvarLabels(gset))
+
+gsms <- "1111100000"
+sml <- c()
+for (i in 1:nchar(gsms)) { sml[i] <- substr(gsms,i,i) }
+
+
+# log2 transform:
+ex <- exprs(gset)
+qx <- as.numeric(quantile(ex, c(0., 0.25, 0.5, 0.75, 0.99, 1.0), na.rm=T))
+LogC <- (qx[5] > 100) ||
+  (qx[6]-qx[1] > 50 && qx[2] > 0) ||
+  (qx[2] > 0 && qx[2] < 1 && qx[4] > 1 && qx[4] < 2)
+if (LogC) { ex[which(ex <= 0)] <- NaN
+exprs(gset) <- log2(ex) }
+
+#Set group names:
+sml <- paste("G", sml, sep="") 
+
+#Contrast matrix:
+fl <- as.factor(sml)
+gset$description <- fl
+design <- model.matrix(~ description + 0, gset)
+colnames(design) <- levels(fl)
+fit <- lmFit(gset, design)
+
+cont.matrix <- makeContrasts(G1-G0, levels=design)
+cont.matrix
+
+
+```
+
+### Fit Model
+
+```{r analysis}
+model_fit <- contrasts.fit(fit, cont.matrix)
+model_fit <- eBayes(model_fit, 0.01)
+
+```
+
+### Volcano Plot
+
+```{r volcano}
+volcanoplot(model_fit)
+```
+
+### Top Table
+
+```{r fit}
+top_Table <- topTable(model_fit, adjust="fdr", sort.by="B", number=250)
+top_Table <- subset(top_Table, select=c("ID","adj.P.Val","P.Value","t","B","logFC","Gene.symbol","Gene.title"))
+top_Table
 ```
 
 
-
-On this plot we can observe that for each gene, each sample has a value corresponding to the frequency of this gene. Note that 5 samples correspond to fetuses with Turner syndorme, and the other 5 samples correspond to fetuses without Turner syndorm. Therefore, in this study we have 2 groups. 
-Performing an analysis of all the genes and comparing the results between the two groups can help us to obtain more information about the Turner syndrome and what genes are involved on the phenotypic alterations.
 
 [^1]: Amniotic Fluid RNA Gene Expression Profiling Provides Insights Into the Phenotype of Turner Syndrome: Lauren J Massingham 1, Kirby L Johnson, Thomas M Scholl, Donna K Slonim, Heather C Wick, Diana W Bianchi
